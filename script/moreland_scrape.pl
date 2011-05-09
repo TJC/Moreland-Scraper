@@ -7,6 +7,8 @@ use WWW::Mechanize;
 use HTML::TreeBuilder::XPath;
 use XML::Simple;
 
+our $VERSION = '1.00';
+
 =head1 NAME
 
 moreland_scrape.pl
