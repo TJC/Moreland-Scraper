@@ -10,6 +10,12 @@ This script will print out the most-recent 15 planning permits advertised
 by Moreland council. As long as the script is run every day or few, this will
 suffice. (They don't release more than two or three per day)
 
+# INSTALLATION
+
+  perl Makefile.PL
+  make
+  make test
+
 # AUTHOR
 
 Toby Corkindale <tjc@cpan.org>
