@@ -1,23 +1,30 @@
 #!/usr/bin/env perl
-use 5.12.2;
+use 5.10.1;
+use strict;
 use warnings;
-use LWP::UserAgent;
+use feature 'say';
 use WWW::Mechanize;
 use HTML::TreeBuilder::XPath;
-use File::Slurp;
 use XML::Simple;
 
+=pod
+
+This script will print out the most-recent 15 planning permits advertised
+by Moreland council. As long as the script is run every day or few, this will
+suffice. (They don't release more than two or three per day)
+
+=cut
+
+# Define the URL we query:
 our $GENERALENQUIRY =
     'https://eservices.moreland.vic.gov.au/ePathway/Production/Web/GeneralEnquiry/EnquiryLists.aspx';
 
-our $base_url =
-'https://eservices.moreland.vic.gov.au/ePathway/Production/Web/GeneralEnquiry/';
+# Define the URL to contact Moreland Council
+our $contact_us_url = 'http://www.moreland.vic.gov.au/home-contact-us.html';
 
-# my $doc = fetch_doc();
-my $doc = doc_from_file();
-my $results = find_results($doc);
-output_xml($results);
+output_xml(find_results(fetch_doc()));
 
+# Download the HTTP document and parse it with HTML::TreeBuilder
 sub fetch_doc {
     my $mech = WWW::Mechanize->new;
     $mech->agent_alias('Windows Mozilla');
@@ -33,7 +40,7 @@ sub fetch_doc {
         button => 'ctl00$MainBodyContent$mContinueButton',
     );
 
-    say $mech->status;
+    # say $mech->status;
     die("Bad HTTP status: " . $mech->status . "\n" . $mech->content . "\n")
         unless $mech->status == 200;
 
@@ -51,12 +58,15 @@ sub fetch_doc {
     return $doc;
 }
 
-sub doc_from_file {
-    my $doc = HTML::TreeBuilder::XPath->new;
-    $doc->parse_content(read_file('enquirylist.html'));
-    return $doc;
-}
+# Used for testing. Will load a pre-saved HTML file.
+#sub doc_from_file {
+#    my $doc = HTML::TreeBuilder::XPath->new;
+#    use File::Slurp;
+#    $doc->parse_content(read_file('enquirylist.html'));
+#    return $doc;
+#}
 
+# Find the data we're looking for inside the HTML document.
 sub find_results {
     my $doc = shift;
     my @results;
@@ -92,10 +102,11 @@ sub find_results {
 
         push(@results, {
             council_reference => $council_reference,
-            info_url => $base_url . $info_url,
+            info_url => $GENERALENQUIRY,
             date_received => date_to_iso($date_received),
             address => $address,
-            comment_url => 'TODO XXX',
+            description => $description,
+            comment_url => $contact_us_url,
             date_scraped => date_scraped(),
         });
     }
@@ -103,6 +114,7 @@ sub find_results {
     return \@results;
 }
 
+# Produce an XML document to STDOUT
 sub output_xml {
     my $results = shift;
     my $xml = XML::Simple->new(
@@ -119,9 +131,12 @@ sub output_xml {
         }
     };
 
+    say '<?xml?>'; # The encoding is undefined; I don't know what Moreland
+                   # uses..
     say $xml->XMLout($doc);
 }
 
+# Return an ISO8601 date of today.
 sub date_scraped {
     my @time = localtime;
     return join('-', $time[5] + 1900, $time[4] + 1, $time[3]);
